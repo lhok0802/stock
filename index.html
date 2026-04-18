@@ -325,9 +325,7 @@
                 data: {
                     template_object: {
                         object_type: 'text',
-                        content: {
-                            text: finalReport,
-                        },
+                        text: finalReport
                     },
                 },
             }).then(() => showToast('✅ 카톡 발송 성공')).catch((err) => {
