@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 실시간 AI 트렌드 리포터 v2</title>
+    <title>2026 실시간 AI 트렌드 리포터 v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"></script>
     <style>
@@ -49,17 +49,17 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <span class="p-1.5 bg-blue-100 rounded-lg text-blue-600">🌐</span>
-                        실시간 뉴스 데이터 (24h)
+                        실시간 뉴스 데이터 (API 검색)
                     </h2>
-                    <button onclick="fetchLatestNews()" id="fetch-btn" class="px-3 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-full hover:bg-blue-700 transition-all">뉴스 갱신</button>
+                    <button onclick="fetchLatestNews()" id="fetch-btn" class="px-3 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-full hover:bg-blue-700 transition-all">24h 뉴스 검색</button>
                 </div>
                 <div id="news-container" class="flex-1 overflow-y-auto space-y-4 pr-2 text-sm text-slate-600">
                     <div class="text-center py-20 opacity-40">
-                        <p>키를 입력하고 저장한 후<br>'뉴스 갱신'을 클릭하세요.</p>
+                        <p>Google News API를 통해<br>최근 24시간 뉴스를 가져옵니다.</p>
                     </div>
                 </div>
                 <div id="news-loading" class="hidden flex items-center justify-center py-4 gap-2 text-sm text-slate-500">
-                    <div class="loading-spinner"></div> 실시간 검색 수행 중...
+                    <div class="loading-spinner"></div> API 호출 중...
                 </div>
             </div>
         </div>
@@ -75,26 +75,26 @@
 
                 <div class="mb-6">
                     <h1 class="text-2xl font-black text-slate-900 leading-tight">2026 AI Insight<br><span class="text-blue-600">Executive Report</span></h1>
-                    <p class="text-slate-500 text-sm mt-2">전문 애널리스트 페르소나를 통해 실시간 데이터를 분석합니다.</p>
+                    <p class="text-slate-500 text-sm mt-2">검색된 실제 기사를 바탕으로 AI 리포트를 생성합니다.</p>
                 </div>
 
                 <!-- Report Content Area -->
                 <div id="report-area" class="flex-1 bg-white/50 rounded-2xl border border-slate-100 p-6 overflow-y-auto mb-6 whitespace-pre-wrap text-slate-700 leading-relaxed text-sm shadow-inner">
-                    분석 데이터가 대기 중입니다. 뉴스 수집 후 'AI 리포트 생성'을 눌러주세요.
+                    리포트가 생성되지 않았습니다. 뉴스 검색 후 버튼을 눌러주세요.
                 </div>
 
                 <!-- Action Buttons -->
                 <div class="grid grid-cols-2 gap-4">
                     <button onclick="generateAIReport()" id="gen-btn" class="py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-lg hover:bg-black disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                        ✨ 리포트 생성
+                        ✨ 리포트 생성 (Gemini)
                     </button>
                     <button onclick="sendToKakao()" id="kakao-btn" disabled class="py-4 bg-yellow-400 text-black rounded-2xl font-bold shadow-lg hover:bg-yellow-500 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
                         💬 카톡으로 전송
                     </button>
                 </div>
                 
-                <div id="auth-box" class="mt-4 text-center">
-                    <button id="login-trigger" onclick="loginWithKakao()" class="text-[10px] text-slate-400 hover:text-slate-600 underline">현재 비로그인 상태 (카카오 로그인 필요)</button>
+                <div id="auth-box" class="mt-4 text-center text-[10px] text-slate-400">
+                    <button onclick="loginWithKakao()" class="underline">카카오 로그인 상태 확인</button>
                 </div>
             </div>
         </div>
@@ -106,21 +106,21 @@
     </div>
 
     <script>
-        const KAKAO_KEY_STORE = 'kakao_key_v2.0';
-        const GEMINI_KEY_STORE = 'gemini_key_v2.0';
+        const KAKAO_KEY_STORE = 'kakao_key_v3.0';
+        const GEMINI_KEY_STORE = 'gemini_key_v3.0';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
 
         let rawNewsData = "";
         let finalReport = "";
 
-        // 1. 키 저장 및 앱 초기화
+        // 1. 키 관리 및 UI 초기화 (요청 미수행)
         function saveKeys() {
             const kKey = document.getElementById('kakao-key').value.trim();
             const gKey = document.getElementById('gemini-key').value.trim();
             if (kKey) localStorage.setItem(KAKAO_KEY_STORE, kKey);
             if (gKey) localStorage.setItem(GEMINI_KEY_STORE, gKey);
-            showToast('API 설정이 저장되었습니다. 시스템을 재시작합니다.');
-            setTimeout(() => location.reload(), 1000);
+            showToast('설정이 저장되었습니다.');
+            setTimeout(() => location.reload(), 800);
         }
 
         function clearKeys() {
@@ -131,30 +131,48 @@
             }
         }
 
+        // 페이지 로드 시에는 값만 채우고 Kakao.init은 하지 않음
         function initApp() {
             const kKey = localStorage.getItem(KAKAO_KEY_STORE);
             const gKey = localStorage.getItem(GEMINI_KEY_STORE);
             
-            if (kKey) {
-                document.getElementById('kakao-key').value = kKey;
-                try {
-                    Kakao.init(kKey);
-                    if (Kakao.isInitialized()) {
-                        const badge = document.getElementById('sdk-status');
-                        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> SDK ONLINE';
-                        badge.classList.replace('text-red-500', 'text-green-600');
-                        checkKakaoAuth();
-                    }
-                } catch (e) { console.error('Kakao Init Error:', e); }
-            }
+            if (kKey) document.getElementById('kakao-key').value = kKey;
             if (gKey) document.getElementById('gemini-key').value = gKey;
+
+            // 만약 리다이렉트 후(URL에 code가 있음)라면 즉시 초기화 필요
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('code')) {
+                ensureKakaoInit();
+            }
         }
 
-        // 2. 실시간 뉴스 수집 (Google Search Grounding)
-        async function fetchLatestNews() {
-            const geminiKey = localStorage.getItem(GEMINI_KEY_STORE);
-            if (!geminiKey) return showToast('Gemini API 키를 먼저 설정해 주세요.');
+        // 카카오 SDK 초기화 보장 함수 (실제 버튼 클릭 시 호출)
+        function ensureKakaoInit() {
+            if (typeof Kakao === 'undefined') return false;
+            if (Kakao.isInitialized()) return true;
 
+            const kKey = localStorage.getItem(KAKAO_KEY_STORE);
+            if (!kKey) {
+                showToast('카카오 JS 키가 설정되지 않았습니다.');
+                return false;
+            }
+
+            try {
+                Kakao.init(kKey);
+                const badge = document.getElementById('sdk-status');
+                badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> SDK ONLINE';
+                badge.classList.replace('text-red-500', 'text-green-600');
+                checkKakaoAuth();
+                return true;
+            } catch (e) {
+                console.error('Kakao Init Error:', e);
+                showToast('SDK 초기화 실패');
+                return false;
+            }
+        }
+
+        // 2. 실시간 뉴스 수집 (순수 API 호출)
+        async function fetchLatestNews() {
             const container = document.getElementById('news-container');
             const loader = document.getElementById('news-loading');
             const btn = document.getElementById('fetch-btn');
@@ -163,119 +181,106 @@
             loader.classList.remove('hidden');
             btn.disabled = true;
 
-            const systemPrompt = `당신은 실시간 뉴스 탐색기입니다. 오늘(2026년 4월 18일) 기준 최근 24시간 이내의 실시간 뉴스를 구글 검색을 통해 찾아주세요. 
-            분야: 1. AI 경제/시장 동향, 2. AI 문학/창의적 활용, 3. AI 기술적 돌파구.
-            각 뉴스마다 [제목], [내용 요약], [출처 기사 제목 및 날짜]를 명확히 한국어로 작성하세요.`;
-            
             try {
-                const response = await callGeminiAPI(geminiKey, "실시간 AI 경제, 문학, 기술 뉴스를 검색해줘.", systemPrompt, true);
-                const newsText = response.candidates?.[0]?.content?.parts?.[0]?.text || "데이터를 가져올 수 없습니다.";
-                
-                rawNewsData = newsText;
-                container.innerHTML = `<div class="animate-in slide-in-from-bottom-2 duration-500">${newsText.replace(/\n/g, '<br>')}</div>`;
-                showToast('최신 뉴스 데이터 수집 완료');
+                const query = encodeURIComponent('AI 경제 문학 기술 when:1d');
+                const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    rawNewsData = data.items.map(item => `- [${item.pubDate}] ${item.title} (${item.link})`).join('\n');
+                    container.innerHTML = data.items.map(item => `
+                        <div class="p-3 bg-white rounded-xl border border-slate-100 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 text-xs">
+                            <h3 class="font-bold text-slate-800 mb-1 line-clamp-2">${item.title}</h3>
+                            <div class="flex justify-between items-center text-[10px] text-slate-400">
+                                <span>${item.pubDate}</span>
+                                <a href="${item.link}" target="_blank" class="text-blue-500 hover:underline">보기</a>
+                            </div>
+                        </div>
+                    `).join('');
+                    showToast('24시간 뉴스 수집 완료');
+                }
             } catch (e) {
-                showToast('뉴스 수집 중 오류가 발생했습니다.');
-                console.error(e);
+                showToast('뉴스 검색 오류 발생');
             } finally {
                 loader.classList.add('hidden');
                 btn.disabled = false;
             }
         }
 
-        // 3. AI 리포트 생성 (애널리스트 페르소나)
+        // 3. AI 리포트 생성 (Gemini API)
         async function generateAIReport() {
-            if (!rawNewsData) return showToast('먼저 뉴스 데이터를 갱신해 주세요.');
+            if (!rawNewsData) return showToast('뉴스 검색을 먼저 해주세요.');
             const geminiKey = localStorage.getItem(GEMINI_KEY_STORE);
             if (!geminiKey) return showToast('Gemini API 키가 필요합니다.');
 
             const reportArea = document.getElementById('report-area');
             const genBtn = document.getElementById('gen-btn');
 
-            reportArea.innerText = "수집된 데이터를 분석하여 2026 AI 전략 리포트를 생성하고 있습니다...\n(증권사 애널리스트 톤 분석 중)";
+            reportArea.innerText = "데이터 분석 중...";
             genBtn.disabled = true;
 
-            const systemPrompt = `당신은 증권사 경력의 수석 애널리스트입니다. 제공된 실시간 뉴스 데이터를 기반으로 '2026 AI 산업 전략 리포트'를 작성하세요.
-            반드시 다음 요소를 포함하십시오:
-            - 강렬하고 전문적인 제목
-            - 📈 경제/시황: 수치와 팩트 중심 분석 (불렛 활용)
-            - ✍️ 문학/예술: 창의적 산업의 변화 양상 (불렛 활용)
-            - 🤖 기술: 최신 기술 아키텍처나 패러다임 변화 (불렛 활용)
-            - 🚀 최종통찰: 사용자에게 행동을 촉구하는 1줄 통찰 (CTA 방식)
-            
-            카카오톡 전송용이므로 가독성을 위해 이모지를 사용하고, 출처 정보가 있다면 요약에 녹여내세요.`;
+            const systemPrompt = `당신은 증권사 수석 애널리스트입니다. 뉴스 데이터를 기반으로 '2026 AI 전략 리포트'를 가독성 좋게(이모지 포함) 작성하세요.`;
 
             try {
-                const response = await callGeminiAPI(geminiKey, `다음 데이터를 분석해 리포트를 작성해줘: ${rawNewsData}`, systemPrompt);
+                const response = await callGeminiAPI(geminiKey, `뉴스 분석 리포트 작성 요청:\n${rawNewsData}`, systemPrompt);
                 finalReport = response.candidates?.[0]?.content?.parts?.[0]?.text || "분석 실패";
                 reportArea.innerText = finalReport;
                 document.getElementById('kakao-btn').disabled = false;
-                showToast('AI 리포트 생성 성공');
+                showToast('리포트 생성 성공');
             } catch (e) {
-                showToast('리포트 생성에 실패했습니다.');
+                reportArea.innerText = `에러: ${e.message}`;
             } finally {
                 genBtn.disabled = false;
             }
         }
 
-        // 4. 카카오톡 전송 (Text-Heavy Template)
+        // 4. 카카오톡 전송 (버튼 클릭 시에만 SDK 체크)
         function sendToKakao() {
             if (!finalReport) return;
-            
+            if (!ensureKakaoInit()) return; // 초기화 여부 확인
+
             Kakao.API.request({
                 url: '/v2/api/talk/memo/default/send',
                 data: {
                     template_object: {
                         object_type: 'feed',
                         content: {
-                            title: '📊 2026 실시간 AI 트렌드 전략 리포트',
+                            title: '📊 2026 AI 전략 리포트',
                             description: finalReport,
                             image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop',
                             link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI },
                         },
-                        buttons: [{
-                            title: '시스템에서 확인',
-                            link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI }
-                        }],
+                        buttons: [{ title: '리포터 확인', link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI } }],
                     },
                 },
             })
-            .then(() => showToast('✅ 카톡으로 성공적으로 발송되었습니다!'))
-            .catch(err => {
-                showToast('❌ 발송 실패: 로그인을 먼저 진행하세요.');
-            });
+            .then(() => showToast('✅ 카톡 발송 성공'))
+            .catch(() => showToast('❌ 발송 실패: 로그인 필요'));
         }
 
-        // --- 공통 Gemini API 호출 함수 ---
-        async function callGeminiAPI(key, prompt, systemInstruction, useSearch = false) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+        async function callGeminiAPI(key, prompt, systemInstruction) {
+            const modelName = "gemini-2.5-flash-preview-09-2025";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] }
             };
-            if (useSearch) {
-                payload.tools = [{ "google_search": {} }];
-            }
 
-            let retries = 5;
-            let delay = 1000;
-            while (retries > 0) {
-                try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (res.ok) return await res.json();
-                } catch (e) {}
-                await new Promise(r => setTimeout(r, delay));
-                delay *= 2;
-                retries--;
-            }
-            throw new Error('API 연결에 실패했습니다.');
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (res.ok) return result;
+            throw new Error(result.error?.message || "API 오류");
         }
 
         function loginWithKakao() {
+            if (!ensureKakaoInit()) return;
             Kakao.Auth.authorize({ redirectUri: REDIRECT_URI, scope: 'talk_message' });
         }
 
@@ -283,7 +288,9 @@
             const token = getCookie('authorize-access-token');
             if (token) {
                 Kakao.Auth.setAccessToken(token);
-                document.getElementById('auth-box').innerHTML = '<span class="text-[10px] text-green-600 font-bold">● 카카오 인증 활성화됨</span>';
+                const authBox = document.getElementById('auth-box');
+                authBox.innerText = '● 카카오 인증 활성화됨';
+                authBox.classList.add('text-green-600');
             }
         }
 
@@ -296,11 +303,11 @@
         function showToast(msg) {
             const t = document.getElementById('toast');
             document.getElementById('toast-msg').innerText = msg;
-            t.classList.remove('translate-y-20', 'opacity-0');
-            t.classList.add('translate-y-0', 'opacity-100');
+            t.classList.replace('opacity-0', 'opacity-100');
+            t.classList.replace('translate-y-20', 'translate-y-0');
             setTimeout(() => {
-                t.classList.add('translate-y-20', 'opacity-0');
-                t.classList.remove('translate-y-0', 'opacity-100');
+                t.classList.replace('opacity-100', 'opacity-0');
+                t.classList.replace('translate-y-0', 'translate-y-20');
             }, 3000);
         }
 
