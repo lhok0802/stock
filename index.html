@@ -325,7 +325,8 @@
                 data: {
                     template_object: {
                         object_type: 'text',
-                        text: finalReport
+                        text: finalReport,
+                        link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI },
                     },
                 },
             }).then(() => showToast('✅ 카톡 발송 성공')).catch((err) => {
