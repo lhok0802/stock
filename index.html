@@ -271,7 +271,7 @@
             reportArea.innerText = "데이터 분석 중...";
             genBtn.disabled = true;
 
-            const systemPrompt = `당신은 증권사 수석 애널리스트입니다. 뉴스 데이터를 기반으로 '2026 AI 전략 리포트'를 작성하세요. 마크다운 기호를 절대 사용하지 말고 일반 텍스트와 이모지만 사용하십시오.`;
+            const systemPrompt = `당신은 증권사 수석 애널리스트입니다. 뉴스 데이터를 기반으로 '2026 AI 전략 리포트'를 작성하세요. 마크다운 기호를 절대 사용하지 말고 일반 텍스트와 이모지만 사용하십시오. 반드시 180~200자 사이의 분량으로 요약하세요`;
 
             try {
                 const response = await callGeminiAPI(geminiKey, `데이터 분석 요청:\n${rawNewsData}`, systemPrompt);
@@ -324,14 +324,10 @@
                 url: '/v2/api/talk/memo/default/send',
                 data: {
                     template_object: {
-                        object_type: 'feed',
+                        object_type: 'text',
                         content: {
-                            title: '📊 2026 AI 전략 리포트',
-                            description: finalReport,
-                            image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop',
-                            link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI },
+                            text: finalReport,
                         },
-                        buttons: [{ title: '시스템 확인', link: { mobile_web_url: REDIRECT_URI, web_url: REDIRECT_URI } }],
                     },
                 },
             }).then(() => showToast('✅ 카톡 발송 성공')).catch((err) => {
